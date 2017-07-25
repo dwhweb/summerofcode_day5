@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 
+var fs = require('fs');
+var colors = require('colors');
+
 function makeGrid(x, y) {
 	var grid = [];
 	var row = [];
@@ -18,10 +21,14 @@ function makeGrid(x, y) {
 function drawGrid(grid) {
 	for(var row = 0; row < grid.length; row++) {
 		for(var column = 0; column < grid[row].length; column++) {
-			process.stdout.write(grid[row][column]);
+			if(grid[row][column] === "*") {
+				process.stdout.write(grid[row][column].bgRed.red);
+			} else {
+				process.stdout.write(grid[row][column].bgBlue.blue);
+			}
 		}
 
-		console.log("\n");
+		process.stdout.write("\n");
 	}
 }
 
@@ -34,7 +41,7 @@ function toggle(c) {
 	}
 }
 
-function top(grid, start, end) {
+function topline(grid, start, end) {
 	start--;
 	
 	for(var x = start; x < end; x++) {
@@ -52,26 +59,72 @@ function left(grid, start, end) {
 
 function rotateColumn(grid, column, spaces) {
 	var spaces = parseInt(spaces);
+	var row = [[]];
 	column--;
-
-	var gridcopy = grid.slice();
-	var first = gridcopy[spaces][column];
-
-	for(var x = 0; x < grid.length; x++) {
-		row = x + spaces;
-
-		if(row >= grid.length) {
-			row = row - grid.length;
-		}
 		
-		gridcopy[row][column] = grid[x][column];	
+	for(var i = 0; i < grid.length; i++) {
+		row[0].push(grid[i][column]);
 	}
 	
-	gridcopy[spaces][column] = first;
-	console.log(gridcopy);
+	rotateRow(row, 1, spaces);
+
+	for(var i = 0; i < grid.length; i++) {
+		grid[i][column] = row[0][i];
+	}
 }
 
-var grid = makeGrid(10, 4);
-top(grid, 1, 3);
+function rotateRow(grid, row, spaces) {
+	var spaces = parseInt(spaces);
+	row--;
+
+	for(var i = 0; i < spaces; i++) {
+		grid[row].unshift(grid[row].pop());
+	}	
+}
+
+function runInstructions() {
+	var grid = makeGrid(80, 8);
+	var instructions = fs.readFileSync("05-pixels.txt", "utf8").split("\n");
+	var instruction;
+
+	for(var i = 0; i < instructions.length; i++) {
+		instruction = instructions[i].split(" ");
+
+		switch(instruction[0]) {
+			case "top":
+				topline(grid, parseInt(instruction[1]), parseInt(instruction[2]));
+				break;
+			case "left":
+				left(grid, parseInt(instruction[1]), parseInt(instruction[2]));
+				break;
+			case "rotate":
+				if(instruction[1] === "column") {
+					rotateColumn(grid, parseInt(instruction[2]), parseInt(instruction[3]));
+				} else {
+					rotateRow(grid, parseInt(instruction[2]), parseInt(instruction[3]));
+				}
+				break;
+		}
+	}
+
+	return grid;
+}
+
+function getLitPixels(grid) {
+	var litPixels = 0;
+
+	for(var i = 0; i < grid.length; i++) {
+		for(var x = 0; x < grid[i].length; x++) {
+			if(grid[i][x] === "*") {
+				litPixels++;
+			}
+		}
+	}
+
+	return litPixels;
+}
+
+grid = runInstructions();
+console.log("Question 1: There are " + getLitPixels(grid) + " lit pixels");
+console.log("Question 2:");
 drawGrid(grid);
-rotateColumn(grid, 1, 2);
